@@ -1,14 +1,16 @@
 """
 ProClaim — Celery Tasks
 
-extract_documents(claim_id, document_ids, user_id)
+extract_documents(claim_id, doc_payloads, user_id)
   - Transitions claim to PROCESSING
   - Calls Google Gemini for each document
   - Writes ClaimField rows
   - Transitions to EXTRACTED (or back to DRAFT on failure)
 """
 import asyncio
+import base64
 import logging
+import tempfile
 import time
 import uuid
 
@@ -17,7 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.database import AsyncSessionLocal
-from app.models.claim import Claim, ClaimDocument, ClaimStatus
+from app.models.claim import Claim, ClaimStatus
 from app.models.field_config import FieldConfig
 from app.services.extraction_service import DocumentExtractionService
 from app.services.claim_service import (
@@ -56,20 +58,20 @@ class ExtractionTask(Task):
 def extract_documents(
     self: ExtractionTask,
     claim_id: str,
-    document_ids: list[str],
+    doc_payloads: list[dict],
     user_id: str,
 ) -> dict:
     """
     Main extraction task.
     Args:
         claim_id: UUID string of the claim to process
-        document_ids: list of ClaimDocument UUID strings to analyse
+        doc_payloads: list of dicts with id, file_name, mime_type, content_b64
         user_id: UUID string of the user who triggered extraction
     Returns:
         dict with fields_extracted, fields_missing, duration_seconds
     """
     try:
-        return _run(_extract_async(self, claim_id, document_ids, user_id))
+        return _run(_extract_async(self, claim_id, doc_payloads, user_id))
     except Exception as exc:
         logger.error("extraction.failed claim_id=%s: %s", claim_id, exc, exc_info=True)
         _run(_mark_failed(claim_id, user_id, str(exc)))
@@ -79,7 +81,7 @@ def extract_documents(
 async def _extract_async(
     task: ExtractionTask,
     claim_id: str,
-    document_ids: list[str],
+    doc_payloads: list[dict],
     user_id: str,
 ) -> dict:
     start = time.monotonic()
@@ -119,28 +121,38 @@ async def _extract_async(
             for fc in field_configs
         ]
 
-        # Load target documents
-        docs_result = await db.execute(
-            select(ClaimDocument).where(
-                ClaimDocument.id.in_([uuid.UUID(d) for d in document_ids])
-            )
-        )
-        documents = docs_result.scalars().all()
-
         # Run extraction on all documents in parallel
-        async def _extract_one(doc):
-            logger.info("Extracting %s (doc=%s)", claim_id, doc.id)
-            try:
-                return await task.extraction_service.analyze_document(
-                    file_path=doc.file_path,
-                    field_configs=fc_dicts,
-                    document_id=str(doc.id),
-                )
-            except Exception as exc:
-                logger.warning("extraction.error doc=%s: %s", doc.id, exc)
+        # doc_payloads contains base64 content so worker doesn't need filesystem access
+        async def _extract_one(payload: dict):
+            doc_id = payload["id"]
+            content_b64 = payload.get("content_b64")
+            logger.info("Extracting %s (doc=%s)", claim_id, doc_id)
+            if not content_b64:
+                logger.warning("extraction.skip doc=%s: no content", doc_id)
                 return []
+            # Write to a temp file so extraction service can read it
+            suffix = "." + (payload.get("mime_type", "").split("/")[-1] or "bin")
+            try:
+                with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+                    tmp.write(base64.b64decode(content_b64))
+                    tmp_path = tmp.name
+                result = await task.extraction_service.analyze_document(
+                    file_path=tmp_path,
+                    field_configs=fc_dicts,
+                    document_id=doc_id,
+                )
+                return result
+            except Exception as exc:
+                logger.warning("extraction.error doc=%s: %s", doc_id, exc)
+                return []
+            finally:
+                import os
+                try:
+                    os.unlink(tmp_path)
+                except Exception:
+                    pass
 
-        doc_results_list = await asyncio.gather(*[_extract_one(doc) for doc in documents])
+        doc_results_list = await asyncio.gather(*[_extract_one(p) for p in doc_payloads])
 
         # Merge: keep highest-confidence value per field across all documents
         all_results: dict[str, object] = {}

@@ -136,15 +136,36 @@ async def trigger_extraction(
     if not documents:
         raise HTTPException(status_code=400, detail="No documents attached to this claim")
 
-    doc_ids = [str(d.id) for d in documents]
+    # Read file contents here in the API process and pass as base64 to the worker
+    # This avoids shared filesystem dependency between API and worker containers
+    import base64
+    doc_payloads = []
+    for d in documents:
+        try:
+            async with aiofiles.open(d.file_path, "rb") as f:
+                content = await f.read()
+            doc_payloads.append({
+                "id": str(d.id),
+                "file_name": d.file_name,
+                "mime_type": d.mime_type,
+                "content_b64": base64.b64encode(content).decode(),
+            })
+        except Exception:
+            doc_payloads.append({
+                "id": str(d.id),
+                "file_name": d.file_name,
+                "mime_type": d.mime_type,
+                "content_b64": None,
+            })
+
     task = extract_documents.delay(
-        str(claim_id), doc_ids, str(current_user.id)
+        str(claim_id), doc_payloads, str(current_user.id)
     )
 
     return {
         "task_id": task.id,
         "claim_id": str(claim_id),
-        "documents": len(doc_ids),
+        "documents": len(doc_payloads),
         "message": "Extraction started. Poll /claims/{id} for status updates.",
     }
 
