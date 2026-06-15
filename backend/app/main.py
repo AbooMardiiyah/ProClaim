@@ -38,9 +38,8 @@ async def lifespan(app: FastAPI):
     if not await check_db_connection():
         raise RuntimeError("Cannot connect to database. Check DATABASE_URL.")
 
-    if settings.ENVIRONMENT == "development":
-        await init_db() 
-        await seed_defaults()
+    await init_db()
+    await seed_defaults()
 
     yield
 
