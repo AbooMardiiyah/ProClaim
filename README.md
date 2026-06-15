@@ -35,11 +35,11 @@ From the repository root:
 
 ```bash
 # 1. Create env file
-cp proclaim/.env.example proclaim/.env
+cp .env.example .env
 #   → edit .env and set SECRET_KEY, GEMINI_API_KEY, FIRST_ADMIN_EMAIL, FIRST_ADMIN_PASSWORD
 
 # 2. Start all services
-cd proclaim && docker compose up --build
+docker compose up --build
 
 # 3. Access the app
 #   Frontend  → http://localhost:3001
@@ -65,7 +65,7 @@ make generate-docs      # Generate mock PDFs for testing
 
 ## Environment Variables
 
-Copy `.env.example` to `proclaim/.env` and configure:
+Copy `.env.example` to `.env` and configure:
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
@@ -94,7 +94,7 @@ Copy `.env.example` to `proclaim/.env` and configure:
 Mock test documents can be generated with:
 
 ```bash
-cd proclaim/backend
+cd backend
 python scripts/generate_test_docs.py
 ```
 
@@ -107,9 +107,9 @@ ProClaim is ready to deploy on Railway:
 1. Create a new Railway project.
 2. Add a **PostgreSQL** service and a **Redis** service.
 3. Add three deployable services from this repo:
-   - **API**: Dockerfile at `proclaim/backend/Dockerfile`; start command `uvicorn app.main:app --host 0.0.0.0 --port 8000`.
-   - **Worker**: Dockerfile at `proclaim/backend/Dockerfile`; start command `celery -A app.workers.celery_app worker -Q extraction -l info --concurrency 2`.
-   - **Frontend**: Dockerfile at `proclaim/frontend/Dockerfile`.
+   - **API**: Dockerfile at `backend/Dockerfile`; start command `uvicorn app.main:app --host 0.0.0.0 --port 8000`.
+   - **Worker**: Dockerfile at `backend/Dockerfile`; start command `celery -A app.workers.celery_app worker -Q extraction -l info --concurrency 2`.
+   - **Frontend**: Dockerfile at `frontend/Dockerfile`.
 4. Set the production environment variables from `.env.example`.
 5. Run `alembic upgrade head` in the API service to create tables.
 6. Update `ALLOWED_ORIGINS` to include the deployed frontend URL.
@@ -119,7 +119,7 @@ ProClaim is ready to deploy on Railway:
 ## Project Structure
 
 ```
-proclaim/
+ProClaim/                   # repo root (after git clone)
 ├── docker-compose.yml      # Local dev orchestration
 ├── .env.example            # Required env vars
 ├── Makefile                # Convenience commands
