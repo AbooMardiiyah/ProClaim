@@ -99,7 +99,7 @@ export default function UploadPage() {
               <p className="text-sm font-semibold text-teal-700">
                 {step === "uploading"
                   ? "Uploading documents…"
-                  : "Gemini AI is extracting claim data…"}
+                  : "AI is extracting claim data…"}
               </p>
               <p className="text-xs text-teal-600 mt-0.5">
                 {step === "extracting" &&
@@ -138,7 +138,7 @@ export default function UploadPage() {
 
       <p className="text-xs text-slate-400 mt-3">
         {files.length} file{files.length !== 1 ? "s" : ""} selected ·{" "}
-        Powered by Gemini 1.5 Flash
+        Powered by AI
       </p>
     </div>
   );

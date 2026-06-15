@@ -305,7 +305,7 @@ export default function ReviewPage() {
             <Loader2 className="w-5 h-5 text-blue-500 animate-spin shrink-0" />
             <div>
               <p className="text-sm font-semibold text-blue-700">
-                Gemini AI is processing your documents…
+                AI is processing your documents…
               </p>
               <p className="text-xs text-blue-500 mt-0.5">
                 This page will update automatically when extraction is complete.

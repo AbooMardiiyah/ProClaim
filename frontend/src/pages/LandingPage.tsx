@@ -37,7 +37,7 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto text-center">
           <h1 className="text-4xl lg:text-6xl font-extrabold text-[#0A2342] leading-tight mb-6">
             NHIA claims processing,<br />
-            <span className="text-[#028090]">powered by Gemini AI</span>
+            <span className="text-[#028090]">powered by AI</span>
           </h1>
           <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-10">
             ProClaim helps Nigerian hospitals upload patient encounter documents,
@@ -80,9 +80,9 @@ export default function LandingPage() {
               <div className="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center mb-4">
                 <Brain className="w-6 h-6 text-violet-600" />
               </div>
-              <h3 className="text-lg font-bold text-[#0A2342] mb-2">Gemini AI extraction</h3>
+              <h3 className="text-lg font-bold text-[#0A2342] mb-2">AI-powered extraction</h3>
               <p className="text-slate-600 text-sm">
-                Google Gemini 3.5 Flash reads each document and pulls out patient
+                A large language model reads each document and pulls out patient
                 name, NHIA ID, diagnosis, costs, and tariff codes automatically.
               </p>
             </div>
@@ -114,7 +114,7 @@ export default function LandingPage() {
               {
                 step: "2",
                 title: "AI extracts structured data",
-                desc: "Gemini reads every document and populates NHIA-aligned fields with confidence scores.",
+                desc: "AI reads every document and populates NHIA-aligned fields with confidence scores.",
               },
               {
                 step: "3",
