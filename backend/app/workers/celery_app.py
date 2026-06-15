@@ -4,7 +4,7 @@ Async task queue backed by Redis. Workers run extraction tasks independently
 of the FastAPI request lifecycle.
 """
 from celery import Celery
-from celery.signals import worker_ready
+from celery.signals import worker_process_init, worker_ready
 
 from app.config import settings
 
@@ -29,6 +29,18 @@ celery_app.conf.update(
     },
     beat_schedule={},
 )
+
+
+@worker_process_init.connect
+def reset_db_engine(**kwargs):  # type: ignore[no-untyped-def]
+    """Reinitialise the async SQLAlchemy engine after Celery forks a worker process.
+    Without this, the parent's connection pool is shared across fork boundaries
+    causing 'Future attached to a different loop' errors."""
+    from app.database import engine
+    import asyncio
+    loop = asyncio.new_event_loop()
+    loop.run_until_complete(engine.dispose())
+    loop.close()
 
 
 @worker_ready.connect
